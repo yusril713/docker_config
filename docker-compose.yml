@@ -1,0 +1,167 @@
+networks:
+  app-network:
+    driver: ${NETWORKS_DRIVER:-bridge}
+
+volumes:
+  mysql-data:
+    driver: ${VOLUMES_DRIVER:-local}
+  redis-data:
+    driver: ${VOLUMES_DRIVER:-local}
+
+services:
+
+  ### HAProxy ################################################
+  haproxy:
+    build:
+      context: ./haproxy
+    ports:
+      - "${HAPROXY_HTTP_PORT:-8080}:80"
+      - "${HAPROXY_HTTPS_PORT:-8443}:443"
+      - "${HAPROXY_STATS_PORT:-1936}:1936"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - nginx
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  ### Nginx ##################################################
+  nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/conf.d:ro
+      - ./logs/nginx:/var/log/nginx
+      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
+      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ${APP_CODE_PATH_HOST:-../}template-undangan:/var/www/template-undangan:cached
+      - ${APP_CODE_PATH_HOST:-../}patradata:/var/www/patradata:cached
+      - ${APP_CODE_PATH_HOST:-../}nagara:/var/www/nagara:cached
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  ### PHP 7.4 ################################################
+  php74:
+    build:
+      context: ./php74
+      args:
+        - PUID=${PUID:-1000}
+        - PGID=${PGID:-1000}
+    volumes:
+      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
+      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ./php74/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - php74
+
+  ### PHP 8.1 ################################################
+  php81:
+    build:
+      context: ./php81
+      args:
+        - PUID=${PUID:-1000}
+        - PGID=${PGID:-1000}
+    volumes:
+      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
+      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ./php81/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - php81
+
+  ### PHP 8.4 ################################################
+  php84:
+    build:
+      context: ./php84
+      args:
+        - PUID=${PUID:-1000}
+        - PGID=${PGID:-1000}
+    volumes:
+      - ${APP_CODE_PATH_HOST:-../}template-undangan:/var/www/template-undangan:cached
+      - ${APP_CODE_PATH_HOST:-../}patradata:/var/www/patradata:cached
+      - ${APP_CODE_PATH_HOST:-../}nagara:/var/www/nagara:cached
+      - ./php84/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - ./php84/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - php84
+
+  ### MySQL ##################################################
+  mysql:
+    build:
+      context: ./mysql
+      args:
+        MYSQL_VERSION: ${MYSQL_VERSION:-8.0}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-laravel}
+      MYSQL_USER: ${MYSQL_USER:-laravel}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: UTC
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  ### Redis ##################################################
+  redis:
+    build:
+      context: ./redis
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  ### Supervisor PHP 8.1 ########################################
+  supervisor81:
+    build:
+      context: ./supervisor81
+    volumes:
+      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
+      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ./supervisor81/conf.d:/etc/supervisor/conf.d:ro
+      - ./logs/supervisor81:/var/log/supervisor
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - php81
+
+  ### Supervisor PHP 8.4 ########################################
+  supervisor84:
+    build:
+      context: ./supervisor84
+    volumes:
+      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
+      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ./supervisor84/conf.d:/etc/supervisor/conf.d:ro
+      - ./logs/supervisor84:/var/log/supervisor
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - php84

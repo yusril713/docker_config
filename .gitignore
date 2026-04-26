@@ -1,0 +1,31 @@
+# Environment — contains secrets (passwords, credentials)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+
+# MySQL data (if ever mounted locally instead of named volume)
+mysql/data/
+
+# SSL/TLS certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+haproxy/certs/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,146 @@
+#!/bin/bash
+
+set -e
+
+COMPOSE="docker compose"
+VALID_PROFILES=("php74" "php81" "php84")
+ALL_PROFILES="--profile php74 --profile php81 --profile php84"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+usage() {
+    echo -e "${BOLD}Usage:${NC}"
+    echo -e "  ./dc ${CYAN}up${NC} <php74|php81|php84|all>     - Start stack"
+    echo -e "  ./dc ${CYAN}kill${NC} <php74|php81|php84|all>   - Stop & remove containers"
+    echo -e "  ./dc ${CYAN}restart${NC} <php74|php81|php84|all> - Restart stack"
+    echo -e "  ./dc ${CYAN}status${NC}                          - Show container status"
+    echo -e "  ./dc ${CYAN}logs${NC} <service>                  - Tail service logs"
+    echo -e "  ./dc ${CYAN}build${NC} <php74|php81|php84|all>   - Rebuild image"
+    echo -e "  ./dc ${CYAN}shell${NC} <service>                 - Open container shell"
+    echo ""
+    echo -e "${BOLD}Examples:${NC}"
+    echo -e "  ./dc up php84"
+    echo -e "  ./dc up all"
+    echo -e "  ./dc kill php84"
+    echo -e "  ./dc kill all"
+    echo -e "  ./dc restart php81"
+    echo -e "  ./dc logs nginx"
+    echo -e "  ./dc shell php84"
+}
+
+validate_profile() {
+    local profile=$1
+    for valid in "${VALID_PROFILES[@]}"; do
+        [[ "$valid" == "$profile" ]] && return 0
+    done
+    echo -e "${RED}Error:${NC} '$profile' is not valid. Choose: ${VALID_PROFILES[*]} | all"
+    exit 1
+}
+
+profile_flags() {
+    local target=$1
+    if [[ "$target" == "all" ]]; then
+        echo "$ALL_PROFILES"
+    else
+        echo "--profile $target"
+    fi
+}
+
+cmd_up() {
+    local target=$1
+    if [[ -z "$target" ]]; then
+        echo -e "${YELLOW}Select PHP version:${NC}"
+        select p in "${VALID_PROFILES[@]}" "all" "cancel"; do
+            case $p in
+                "cancel") exit 0 ;;
+                *) target=$p; break ;;
+            esac
+        done
+    fi
+    [[ "$target" != "all" ]] && validate_profile "$target"
+    echo -e "${GREEN}Starting stack: ${BOLD}$target${NC}"
+    $COMPOSE $(profile_flags "$target") up -d
+    echo ""
+    $COMPOSE $ALL_PROFILES ps
+}
+
+cmd_kill() {
+    local target=$1
+    if [[ -z "$target" ]]; then
+        echo -e "${RED}Error:${NC} Specify a target. Example: ./dc kill php84 | all"
+        exit 1
+    fi
+    [[ "$target" != "all" ]] && validate_profile "$target"
+    echo -e "${YELLOW}Stopping: ${BOLD}$target${NC}"
+    $COMPOSE $(profile_flags "$target") down
+    echo -e "${GREEN}Done.${NC}"
+}
+
+cmd_restart() {
+    local target=$1
+    if [[ -z "$target" ]]; then
+        echo -e "${RED}Error:${NC} Specify a target. Example: ./dc restart php84 | all"
+        exit 1
+    fi
+    [[ "$target" != "all" ]] && validate_profile "$target"
+    echo -e "${YELLOW}Restarting: ${BOLD}$target${NC}"
+    $COMPOSE $(profile_flags "$target") down
+    $COMPOSE $(profile_flags "$target") up -d
+    echo ""
+    $COMPOSE $ALL_PROFILES ps
+}
+
+cmd_status() {
+    echo -e "${CYAN}${BOLD}Container Status:${NC}"
+    $COMPOSE $ALL_PROFILES ps
+}
+
+cmd_logs() {
+    local service=$1
+    if [[ -z "$service" ]]; then
+        echo -e "${RED}Error:${NC} Specify a service. Example: ./dc logs nginx"
+        exit 1
+    fi
+    $COMPOSE logs -f --tail=100 "$service"
+}
+
+cmd_build() {
+    local target=${1:-all}
+    if [[ "$target" == "all" ]]; then
+        echo -e "${YELLOW}Building all PHP images...${NC}"
+        $COMPOSE $ALL_PROFILES build --no-cache php74 php81 php84
+    else
+        validate_profile "$target"
+        echo -e "${YELLOW}Building image: ${BOLD}$target${NC}"
+        $COMPOSE build --no-cache "$target"
+    fi
+    echo -e "${GREEN}Build complete.${NC}"
+}
+
+cmd_shell() {
+    local service=$1
+    if [[ -z "$service" ]]; then
+        echo -e "${RED}Error:${NC} Specify a service. Example: ./dc shell php84"
+        exit 1
+    fi
+    echo -e "${CYAN}Opening shell: ${BOLD}$service${NC}"
+    docker compose exec "$service" sh
+}
+
+# Main
+case "$1" in
+    up)       cmd_up "$2" ;;
+    kill)     cmd_kill "$2" ;;
+    restart)  cmd_restart "$2" ;;
+    status)   cmd_status ;;
+    logs)     cmd_logs "$2" ;;
+    build)    cmd_build "$2" ;;
+    shell)    cmd_shell "$2" ;;
+    *)        usage ;;
+esac
