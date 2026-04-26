@@ -34,11 +34,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/sites:/etc/nginx/conf.d:ro
       - ./logs/nginx:/var/log/nginx
-      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
-      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
-      - ${APP_CODE_PATH_HOST:-../}template-undangan:/var/www/template-undangan:cached
-      - ${APP_CODE_PATH_HOST:-../}patradata:/var/www/patradata:cached
-      - ${APP_CODE_PATH_HOST:-../}nagara:/var/www/nagara:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
     networks:
       - app-network
     restart: unless-stopped
@@ -51,8 +47,7 @@ services:
         - PUID=${PUID:-1000}
         - PGID=${PGID:-1000}
     volumes:
-      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
-      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
       - ./php74/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
     networks:
       - app-network
@@ -68,8 +63,7 @@ services:
         - PUID=${PUID:-1000}
         - PGID=${PGID:-1000}
     volumes:
-      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
-      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
       - ./php81/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
     networks:
       - app-network
@@ -85,9 +79,7 @@ services:
         - PUID=${PUID:-1000}
         - PGID=${PGID:-1000}
     volumes:
-      - ${APP_CODE_PATH_HOST:-../}template-undangan:/var/www/template-undangan:cached
-      - ${APP_CODE_PATH_HOST:-../}patradata:/var/www/patradata:cached
-      - ${APP_CODE_PATH_HOST:-../}nagara:/var/www/nagara:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
       - ./php84/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
       - ./php84/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
     networks:
@@ -135,8 +127,7 @@ services:
     build:
       context: ./supervisor81
     volumes:
-      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
-      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
       - ./supervisor81/conf.d:/etc/supervisor/conf.d:ro
       - ./logs/supervisor81:/var/log/supervisor
     depends_on:
@@ -153,8 +144,7 @@ services:
     build:
       context: ./supervisor84
     volumes:
-      - ${APP_CODE_PATH_HOST:-../}project_1:/var/www/project_1:cached
-      - ${APP_CODE_PATH_HOST:-../}project_2:/var/www/project_2:cached
+      - ${APP_CODE_PATH_HOST:-../}:/var/www:cached
       - ./supervisor84/conf.d:/etc/supervisor/conf.d:ro
       - ./logs/supervisor84:/var/log/supervisor
     depends_on:
